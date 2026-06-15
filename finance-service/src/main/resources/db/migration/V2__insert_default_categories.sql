@@ -1,0 +1,15 @@
+INSERT INTO categories (name, type, user_id) VALUES
+    ('Зарплата', 'INCOME', NULL),
+    ('Подработка', 'INCOME', NULL),
+    ('Инвестиции', 'INCOME', NULL),
+    ('Подарки', 'INCOME', NULL),
+    ('Другой доход', 'INCOME', NULL),
+    ('Продукты', 'EXPENSE', NULL),
+    ('Транспорт', 'EXPENSE', NULL),
+    ('Здоровье', 'EXPENSE', NULL),
+    ('Образование', 'EXPENSE', NULL),
+    ('Развлечения', 'EXPENSE', NULL),
+    ('Одежда', 'EXPENSE', NULL),
+    ('ЖКХ', 'EXPENSE', NULL),
+    ('Связь', 'EXPENSE', NULL),
+    ('Другой расход', 'EXPENSE', NULL);

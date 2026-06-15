@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отчеты - Family Finance</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <nav>
+        <span class="brand">Family Finance</span>
+        <a href="/dashboard">Главная</a>
+        <a href="/operations">Операции</a>
+        <a href="/family">Семья</a>
+        <a href="/reports">Отчеты</a>
+        <button class="logout" onclick="logout()">Выйти</button>
+    </nav>
+
+    <div class="container">
+        <h1>Отчеты</h1>
+
+        <div class="card">
+            <h3>Параметры отчета</h3>
+            <div class="filters">
+                <label>С <input type="date" id="report-from"></label>
+                <label>По <input type="date" id="report-to"></label>
+                <label>Тип
+                    <select id="report-type">
+                        <option value="personal">Личный</option>
+                        <option value="family">По группе</option>
+                    </select>
+                </label>
+                <label>Группа
+                    <select id="report-family">
+                        <option value="">—</option>
+                    </select>
+                </label>
+                <button onclick="buildReport()">Построить</button>
+                <button onclick="exportCsv()">Скачать CSV</button>
+            </div>
+        </div>
+
+        <div id="report-result" class="hidden">
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="value income" id="r-income">—</div>
+                    <div class="label">Доходы</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value expense" id="r-expense">—</div>
+                    <div class="label">Расходы</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value balance" id="r-balance">—</div>
+                    <div class="label">Баланс</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" id="r-count">—</div>
+                    <div class="label">Операций</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Доходы по категориям</h3>
+                <table>
+                    <thead><tr><th>Категория</th><th>Сумма</th></tr></thead>
+                    <tbody id="income-categories"></tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h3>Расходы по категориям</h3>
+                <table>
+                    <thead><tr><th>Категория</th><th>Сумма</th></tr></thead>
+                    <tbody id="expense-categories"></tbody>
+                </table>
+            </div>
+
+            <div class="card" id="by-user-section">
+                <h3>По участникам</h3>
+                <table>
+                    <thead><tr><th>ID пользователя</th><th>Доходы</th><th>Расходы</th><th>Баланс</th></tr></thead>
+                    <tbody id="by-user-table"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="/app.js"></script>
+    <script>
+        if (!getToken()) window.location.href = '/login';
+
+        const now = new Date();
+        document.getElementById('report-from').value =
+            new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        document.getElementById('report-to').value = now.toISOString().split('T')[0];
+
+        async function loadFamilies() {
+            const resp = await apiRequest('/api/families');
+            if (!resp) return;
+            const families = await resp.json();
+            const sel = document.getElementById('report-family');
+            families.forEach(f => {
+                sel.innerHTML += '<option value="' + f.id + '">' + f.name + '</option>';
+            });
+        }
+
+        function getReportBody() {
+            return {
+                dateFrom: document.getElementById('report-from').value,
+                dateTo: document.getElementById('report-to').value,
+                familyId: document.getElementById('report-family').value
+                    ? parseInt(document.getElementById('report-family').value)
+                    : null
+            };
+        }
+
+        function getReportUrl() {
+            const type = document.getElementById('report-type').value;
+            return type === 'family' ? '/api/reports/family' : '/api/reports/personal';
+        }
+
+        async function buildReport() {
+            try {
+                const reportUrl = getReportUrl().replace('/api/reports', '');
+                const body = getReportBody();
+                console.log('Запрос отчета:', 'http://localhost:8083/api/reports' + reportUrl, body);
+                const resp = await fetch('http://localhost:8083/api/reports' + reportUrl, {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: JSON.stringify(body)
+                });
+
+                if (!resp.ok) {
+                    const text = await resp.text();
+                    console.error('Ошибка отчета:', resp.status, text);
+                    try {
+                        const err = JSON.parse(text);
+                        alert(err.message || 'Ошибка построения отчета');
+                    } catch (e) {
+                        alert('Ошибка построения отчета: ' + resp.status);
+                    }
+                    return;
+                }
+
+                const report = await resp.json();
+                showReport(report);
+            } catch (err) {
+                console.error('Ошибка запроса:', err);
+                alert('Не удалось связаться с сервисом отчетов: ' + err.message);
+            }
+        }
+
+        function showReport(report) {
+            document.getElementById('report-result').classList.remove('hidden');
+            document.getElementById('r-income').textContent = formatMoney(report.totalIncome);
+            document.getElementById('r-expense').textContent = formatMoney(report.totalExpense);
+            document.getElementById('r-balance').textContent = formatMoney(report.balance);
+            document.getElementById('r-count').textContent = report.transactionCount;
+
+            fillCategoryTable('income-categories', report.incomeByCategory);
+            fillCategoryTable('expense-categories', report.expenseByCategory);
+
+            const byUserTable = document.getElementById('by-user-table');
+            byUserTable.innerHTML = '';
+            if (report.byUser && report.byUser.length > 0) {
+                document.getElementById('by-user-section').classList.remove('hidden');
+                report.byUser.forEach(u => {
+                    byUserTable.innerHTML += '<tr>' +
+                        '<td>' + u.userId + '</td>' +
+                        '<td class="income">' + formatMoney(u.income) + '</td>' +
+                        '<td class="expense">' + formatMoney(u.expense) + '</td>' +
+                        '<td>' + formatMoney(u.balance) + '</td></tr>';
+                });
+            }
+        }
+
+        function fillCategoryTable(tbodyId, categories) {
+            const tbody = document.getElementById(tbodyId);
+            tbody.innerHTML = '';
+            if (!categories || Object.keys(categories).length === 0) {
+                tbody.innerHTML = '<tr><td colspan="2">Нет данных</td></tr>';
+                return;
+            }
+            for (const [name, amount] of Object.entries(categories)) {
+                tbody.innerHTML += '<tr><td>' + name + '</td><td>' + formatMoney(amount) + '</td></tr>';
+            }
+        }
+
+        async function exportCsv() {
+            try {
+                const reportUrl = getReportUrl().replace('/api/reports', '');
+                const body = getReportBody();
+                const resp = await fetch('http://localhost:8083/api/reports' + reportUrl + '/export', {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: JSON.stringify(body)
+                });
+
+                if (!resp.ok) {
+                    const text = await resp.text();
+                    console.error('Ошибка экспорта:', resp.status, text);
+                    alert('Ошибка экспорта: ' + resp.status);
+                    return;
+                }
+
+                const blob = await resp.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'report.csv';
+                a.click();
+                window.URL.revokeObjectURL(url);
+            } catch (err) {
+                console.error('Ошибка запроса экспорта:', err);
+                alert('Не удалось связаться с сервисом отчетов: ' + err.message);
+            }
+        }
+
+        loadFamilies();
+    </script>
+</body>
+</html>
