@@ -7,6 +7,7 @@ import com.familyfinance.finance.entity.Category;
 import com.familyfinance.finance.entity.Family;
 import com.familyfinance.finance.entity.OperationType;
 import com.familyfinance.finance.entity.Transaction;
+import com.familyfinance.finance.repository.FamilyMemberRepository;
 import com.familyfinance.finance.repository.FamilyRepository;
 import com.familyfinance.finance.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
@@ -20,17 +21,20 @@ public class TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final FamilyRepository familyRepository;
+    private final FamilyMemberRepository familyMemberRepository;
     private final CategoryService categoryService;
     private final AccessService accessService;
     private final NotificationService notificationService;
 
     public TransactionService(TransactionRepository transactionRepository,
                               FamilyRepository familyRepository,
+                              FamilyMemberRepository familyMemberRepository,
                               CategoryService categoryService,
                               AccessService accessService,
                               NotificationService notificationService) {
         this.transactionRepository = transactionRepository;
         this.familyRepository = familyRepository;
+        this.familyMemberRepository = familyMemberRepository;
         this.categoryService = categoryService;
         this.accessService = accessService;
         this.notificationService = notificationService;
@@ -84,8 +88,19 @@ public class TransactionService {
     @Transactional(readOnly = true)
     public List<TransactionResponse> getAllAccessibleTransactions(Long userId, List<Long> familyIds,
                                                                    LocalDate from, LocalDate to) {
+        if (familyIds == null || familyIds.isEmpty()) {
+            return transactionRepository.findPersonal(userId, from, to, null, null)
+                    .stream().map(this::toResponse).toList();
+        }
         return transactionRepository.findAllAccessible(userId, familyIds, from, to)
                 .stream().map(this::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<TransactionResponse> getAllForUser(Long userId, LocalDate from, LocalDate to) {
+        List<Long> familyIds = familyRepository.findAllByUserId(userId).stream()
+                .map(f -> f.getId()).toList();
+        return getAllAccessibleTransactions(userId, familyIds, from, to);
     }
 
     @Transactional(readOnly = true)
@@ -103,6 +118,13 @@ public class TransactionService {
     }
 
     private TransactionResponse toResponse(Transaction t) {
+        String userEmail = familyMemberRepository
+                .findByFamilyIdAndUserId(
+                        t.getFamily() != null ? t.getFamily().getId() : -1L,
+                        t.getUserId())
+                .map(m -> m.getUserEmail())
+                .orElse(null);
+
         return new TransactionResponse(
                 t.getId(),
                 t.getAmount(),
@@ -113,7 +135,8 @@ public class TransactionService {
                 t.getCategory().getName(),
                 t.getCategory().getId(),
                 t.getFamily() != null ? t.getFamily().getId() : null,
-                t.getFamily() != null ? t.getFamily().getName() : null
+                t.getFamily() != null ? t.getFamily().getName() : null,
+                userEmail
         );
     }
 }

@@ -44,6 +44,12 @@
         <div class="card">
             <h3>Фильтры</h3>
             <div class="filters">
+                <label>Контекст
+                    <select id="filter-context">
+                        <option value="all">Все мои операции</option>
+                        <option value="personal">Только личные</option>
+                    </select>
+                </label>
                 <label>С <input type="date" id="filter-from"></label>
                 <label>По <input type="date" id="filter-to"></label>
                 <label>Тип
@@ -66,6 +72,7 @@
                         <th>Категория</th>
                         <th>Описание</th>
                         <th>Группа</th>
+                        <th>Автор</th>
                         <th>Сумма</th>
                     </tr>
                 </thead>
@@ -99,9 +106,11 @@
             const resp = await apiRequest('/api/families');
             if (!resp) return;
             const families = await resp.json();
-            const sel = document.getElementById('op-family');
+            const opSel = document.getElementById('op-family');
+            const ctxSel = document.getElementById('filter-context');
             families.forEach(f => {
-                sel.innerHTML += '<option value="' + f.id + '">' + f.name + '</option>';
+                opSel.innerHTML += '<option value="' + f.id + '">' + f.name + '</option>';
+                ctxSel.innerHTML += '<option value="family:' + f.id + '">Группа: ' + f.name + '</option>';
             });
         }
 
@@ -136,17 +145,35 @@
         }
 
         async function loadTransactions() {
-            let url = '/api/transactions/personal?';
+            const context = document.getElementById('filter-context').value;
             const from = document.getElementById('filter-from').value;
             const to = document.getElementById('filter-to').value;
             const type = document.getElementById('filter-type').value;
-            if (from) url += 'from=' + from + '&';
-            if (to) url += 'to=' + to + '&';
-            if (type) url += 'type=' + type + '&';
+
+            let url;
+            if (context.startsWith('family:')) {
+                const familyId = context.substring(7);
+                url = '/api/transactions/family/' + familyId + '?';
+                if (from) url += 'from=' + from + '&';
+                if (to) url += 'to=' + to + '&';
+                if (type) url += 'type=' + type + '&';
+            } else if (context === 'personal') {
+                url = '/api/transactions/personal?';
+                if (from) url += 'from=' + from + '&';
+                if (to) url += 'to=' + to + '&';
+                if (type) url += 'type=' + type + '&';
+            } else {
+                url = '/api/transactions/all?';
+                if (from) url += 'from=' + from + '&';
+                if (to) url += 'to=' + to + '&';
+            }
 
             const resp = await apiRequest(url);
             if (!resp) return;
-            const transactions = await resp.json();
+            let transactions = await resp.json();
+            if (type && context === 'all') {
+                transactions = transactions.filter(t => t.type === type);
+            }
 
             const tbody = document.getElementById('transactions-table');
             tbody.innerHTML = '';
@@ -160,12 +187,13 @@
                     '<td>' + t.categoryName + '</td>' +
                     '<td>' + (t.description || '') + '</td>' +
                     '<td>' + (t.familyName || 'Личная') + '</td>' +
+                    '<td>' + (t.userEmail || '—') + '</td>' +
                     '<td class="' + cls + '">' + sign + formatMoney(t.amount) + '</td>' +
                     '</tr>';
             });
 
             if (transactions.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6">Нет операций</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7">Нет операций</td></tr>';
             }
         }
 

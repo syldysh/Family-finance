@@ -24,4 +24,5 @@ public class TransactionResponse {
     private Long categoryId;
     private Long familyId;
     private String familyName;
+    private String userEmail;
 }
