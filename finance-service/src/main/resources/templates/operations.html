@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Операции - Family Finance</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <nav>
+        <span class="brand">Family Finance</span>
+        <a href="/dashboard">Главная</a>
+        <a href="/operations">Операции</a>
+        <a href="/family">Семья</a>
+        <a href="/reports">Отчеты</a>
+        <button class="logout" onclick="logout()">Выйти</button>
+    </nav>
+
+    <div class="container">
+        <h1>Операции</h1>
+
+        <div class="card">
+            <h3>Добавить операцию</h3>
+            <form id="add-form" onsubmit="addTransaction(event)">
+                <select id="op-type" required>
+                    <option value="">Тип</option>
+                    <option value="INCOME">Доход</option>
+                    <option value="EXPENSE">Расход</option>
+                </select>
+                <input type="number" id="op-amount" placeholder="Сумма" step="0.01" min="0.01" required>
+                <select id="op-category" required>
+                    <option value="">Категория</option>
+                </select>
+                <input type="date" id="op-date" required>
+                <input type="text" id="op-desc" placeholder="Описание (необязательно)">
+                <select id="op-family">
+                    <option value="">Личная операция</option>
+                </select>
+                <button type="submit">Добавить</button>
+                <p id="add-error" class="error-msg"></p>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>Фильтры</h3>
+            <div class="filters">
+                <label>С <input type="date" id="filter-from"></label>
+                <label>По <input type="date" id="filter-to"></label>
+                <label>Тип
+                    <select id="filter-type">
+                        <option value="">Все</option>
+                        <option value="INCOME">Доход</option>
+                        <option value="EXPENSE">Расход</option>
+                    </select>
+                </label>
+                <button onclick="loadTransactions()">Применить</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Тип</th>
+                        <th>Категория</th>
+                        <th>Описание</th>
+                        <th>Группа</th>
+                        <th>Сумма</th>
+                    </tr>
+                </thead>
+                <tbody id="transactions-table"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="/app.js"></script>
+    <script>
+        if (!getToken()) window.location.href = '/login';
+
+        document.getElementById('op-date').valueAsDate = new Date();
+
+        document.getElementById('op-type').addEventListener('change', loadCategories);
+
+        async function loadCategories() {
+            const type = document.getElementById('op-type').value;
+            const url = type ? '/api/categories?type=' + type : '/api/categories';
+            const resp = await apiRequest(url);
+            if (!resp) return;
+            const categories = await resp.json();
+            const sel = document.getElementById('op-category');
+            sel.innerHTML = '<option value="">Категория</option>';
+            categories.forEach(c => {
+                sel.innerHTML += '<option value="' + c.id + '">' + c.name + '</option>';
+            });
+        }
+
+        async function loadFamilies() {
+            const resp = await apiRequest('/api/families');
+            if (!resp) return;
+            const families = await resp.json();
+            const sel = document.getElementById('op-family');
+            families.forEach(f => {
+                sel.innerHTML += '<option value="' + f.id + '">' + f.name + '</option>';
+            });
+        }
+
+        async function addTransaction(e) {
+            e.preventDefault();
+            const body = {
+                type: document.getElementById('op-type').value,
+                amount: parseFloat(document.getElementById('op-amount').value),
+                categoryId: parseInt(document.getElementById('op-category').value),
+                date: document.getElementById('op-date').value,
+                description: document.getElementById('op-desc').value || null
+            };
+            const familyId = document.getElementById('op-family').value;
+            if (familyId) body.familyId = parseInt(familyId);
+
+            const resp = await apiRequest('/api/transactions', {
+                method: 'POST',
+                body: JSON.stringify(body)
+            });
+
+            if (!resp) return;
+            if (!resp.ok) {
+                const err = await resp.json();
+                document.getElementById('add-error').textContent = err.message;
+                return;
+            }
+
+            document.getElementById('add-error').textContent = '';
+            document.getElementById('add-form').reset();
+            document.getElementById('op-date').valueAsDate = new Date();
+            loadTransactions();
+        }
+
+        async function loadTransactions() {
+            let url = '/api/transactions/personal?';
+            const from = document.getElementById('filter-from').value;
+            const to = document.getElementById('filter-to').value;
+            const type = document.getElementById('filter-type').value;
+            if (from) url += 'from=' + from + '&';
+            if (to) url += 'to=' + to + '&';
+            if (type) url += 'type=' + type + '&';
+
+            const resp = await apiRequest(url);
+            if (!resp) return;
+            const transactions = await resp.json();
+
+            const tbody = document.getElementById('transactions-table');
+            tbody.innerHTML = '';
+            transactions.forEach(t => {
+                const sign = t.type === 'INCOME' ? '+' : '-';
+                const cls = t.type === 'INCOME' ? 'income' : 'expense';
+                const typeLabel = t.type === 'INCOME' ? 'Доход' : 'Расход';
+                tbody.innerHTML += '<tr>' +
+                    '<td>' + t.date + '</td>' +
+                    '<td>' + typeLabel + '</td>' +
+                    '<td>' + t.categoryName + '</td>' +
+                    '<td>' + (t.description || '') + '</td>' +
+                    '<td>' + (t.familyName || 'Личная') + '</td>' +
+                    '<td class="' + cls + '">' + sign + formatMoney(t.amount) + '</td>' +
+                    '</tr>';
+            });
+
+            if (transactions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6">Нет операций</td></tr>';
+            }
+        }
+
+        loadCategories();
+        loadFamilies();
+        loadTransactions();
+    </script>
+</body>
+</html>

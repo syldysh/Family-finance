@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Family Finance</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <nav>
+        <span class="brand">Family Finance</span>
+        <a href="/dashboard">Главная</a>
+        <a href="/operations">Операции</a>
+        <a href="/family">Семья</a>
+        <a href="/reports">Отчеты</a>
+        <button class="logout" onclick="logout()">Выйти</button>
+    </nav>
+
+    <div class="container">
+        <h1>Главная</h1>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="value balance" id="total-balance">—</div>
+                <div class="label">Баланс за текущий месяц</div>
+            </div>
+            <div class="stat-card">
+                <div class="value income" id="total-income">—</div>
+                <div class="label">Доходы за месяц</div>
+            </div>
+            <div class="stat-card">
+                <div class="value expense" id="total-expense">—</div>
+                <div class="label">Расходы за месяц</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Последние операции</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Категория</th>
+                        <th>Описание</th>
+                        <th>Сумма</th>
+                    </tr>
+                </thead>
+                <tbody id="recent-transactions"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="/app.js"></script>
+    <script>
+        if (!getToken()) {
+            window.location.href = '/login';
+        }
+
+        function localDate(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return y + '-' + m + '-' + d;
+        }
+
+        async function loadDashboard() {
+            try {
+                const now = new Date();
+                const from = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
+                const to = localDate(now);
+
+                const resp = await apiRequest('/api/transactions/personal');
+                if (!resp) return;
+
+                if (!resp.ok) {
+                    console.error('Ошибка загрузки операций:', resp.status, await resp.text());
+                    return;
+                }
+
+                const allTransactions = await resp.json();
+                const transactions = allTransactions.filter(t => t.date >= from && t.date <= to);
+
+                let income = 0, expense = 0;
+                transactions.forEach(t => {
+                    if (t.type === 'INCOME') income += Number(t.amount);
+                    else expense += Number(t.amount);
+                });
+
+                document.getElementById('total-income').textContent = formatMoney(income);
+                document.getElementById('total-expense').textContent = formatMoney(expense);
+                document.getElementById('total-balance').textContent = formatMoney(income - expense);
+
+                const tbody = document.getElementById('recent-transactions');
+                tbody.innerHTML = '';
+                transactions.slice(0, 10).forEach(t => {
+                    const sign = t.type === 'INCOME' ? '+' : '-';
+                    const cls = t.type === 'INCOME' ? 'income' : 'expense';
+                    tbody.innerHTML += '<tr>' +
+                        '<td>' + t.date + '</td>' +
+                        '<td>' + t.categoryName + '</td>' +
+                        '<td>' + (t.description || '') + '</td>' +
+                        '<td class="' + cls + '">' + sign + formatMoney(t.amount) + '</td>' +
+                        '</tr>';
+                });
+
+                if (transactions.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4">Нет операций за текущий месяц</td></tr>';
+                }
+            } catch (err) {
+                console.error('Ошибка dashboard:', err);
+            }
+        }
+
+        loadDashboard();
+    </script>
+</body>
+</html>

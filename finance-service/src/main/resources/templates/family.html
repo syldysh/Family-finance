@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Семья - Family Finance</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <nav>
+        <span class="brand">Family Finance</span>
+        <a href="/dashboard">Главная</a>
+        <a href="/operations">Операции</a>
+        <a href="/family">Семья</a>
+        <a href="/reports">Отчеты</a>
+        <button class="logout" onclick="logout()">Выйти</button>
+    </nav>
+
+    <div class="container">
+        <h1>Семья / Группы</h1>
+
+        <div class="card">
+            <h3>Создать группу</h3>
+            <form onsubmit="createFamily(event)">
+                <input type="text" id="family-name" placeholder="Название группы" required>
+                <button type="submit">Создать</button>
+            </form>
+        </div>
+
+        <div id="families-list"></div>
+    </div>
+
+    <script src="/app.js"></script>
+    <script>
+        if (!getToken()) window.location.href = '/login';
+
+        async function createFamily(e) {
+            e.preventDefault();
+            const name = document.getElementById('family-name').value;
+            const resp = await apiRequest('/api/families', {
+                method: 'POST',
+                body: JSON.stringify({ name })
+            });
+            if (resp && resp.ok) {
+                document.getElementById('family-name').value = '';
+                loadFamilies();
+            }
+        }
+
+        async function addMember(familyId) {
+            const input = document.getElementById('member-email-' + familyId);
+            const email = input.value;
+            if (!email) return;
+
+            const resp = await apiRequest('/api/families/' + familyId + '/members', {
+                method: 'POST',
+                body: JSON.stringify({ email })
+            });
+            if (resp && resp.ok) {
+                input.value = '';
+                loadFamilies();
+            } else if (resp) {
+                const err = await resp.json();
+                alert(err.message);
+            }
+        }
+
+        async function removeMember(familyId, userId) {
+            if (!confirm('Удалить участника?')) return;
+            const resp = await apiRequest('/api/families/' + familyId + '/members/' + userId, {
+                method: 'DELETE'
+            });
+            if (resp && resp.ok) loadFamilies();
+        }
+
+        async function loadFamilies() {
+            const resp = await apiRequest('/api/families');
+            if (!resp) return;
+            const families = await resp.json();
+
+            const container = document.getElementById('families-list');
+            container.innerHTML = '';
+
+            if (families.length === 0) {
+                container.innerHTML = '<div class="card"><p>У вас пока нет групп</p></div>';
+                return;
+            }
+
+            families.forEach(f => {
+                let membersHtml = '<table><thead><tr><th>Email</th><th>Роль</th><th></th></tr></thead><tbody>';
+                f.members.forEach(m => {
+                    const removeBtn = m.role !== 'OWNER'
+                        ? '<button class="danger" onclick="removeMember(' + f.id + ',' + m.userId + ')">Удалить</button>'
+                        : '';
+                    membersHtml += '<tr><td>' + m.userEmail + '</td><td>' + m.role + '</td><td>' + removeBtn + '</td></tr>';
+                });
+                membersHtml += '</tbody></table>';
+
+                container.innerHTML += '<div class="card">' +
+                    '<h3>' + f.name + '</h3>' +
+                    membersHtml +
+                    '<div style="margin-top:12px;display:flex;gap:8px;">' +
+                    '<input type="email" id="member-email-' + f.id + '" placeholder="Email участника">' +
+                    '<button onclick="addMember(' + f.id + ')">Добавить</button>' +
+                    '</div></div>';
+            });
+        }
+
+        loadFamilies();
+    </script>
+</body>
+</html>
