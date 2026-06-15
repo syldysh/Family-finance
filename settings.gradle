@@ -1,0 +1,6 @@
+rootProject.name = 'family-finance'
+
+include 'common'
+include 'auth-service'
+include 'finance-service'
+include 'report-service'
