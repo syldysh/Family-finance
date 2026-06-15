@@ -5,3 +5,5 @@ spring:
 services:
   auth:
     url: http://auth-service:8081
+  report:
+    url: http://report-service:8083
