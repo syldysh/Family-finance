@@ -64,6 +64,14 @@ public class ReportController {
         return buildCsvResponse(report);
     }
 
+    @PostMapping("/full/export")
+    @Operation(summary = "Экспорт полного отчёта по всем доступным операциям в CSV")
+    public ResponseEntity<byte[]> exportFullReport(@Valid @RequestBody ReportRequest request,
+                                                   @AuthenticationPrincipal UserPrincipal principal) {
+        ReportResponse report = reportService.buildFullReport(principal.getUserId(), request);
+        return buildCsvResponse(report);
+    }
+
     private ResponseEntity<byte[]> buildCsvResponse(ReportResponse report) {
         byte[] csv = csvExportService.exportReport(report);
         return ResponseEntity.ok()
