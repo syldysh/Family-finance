@@ -42,6 +42,8 @@
                         <th>Дата</th>
                         <th>Категория</th>
                         <th>Описание</th>
+                        <th>Группа</th>
+                        <th>Автор</th>
                         <th>Сумма</th>
                     </tr>
                 </thead>
@@ -69,7 +71,7 @@
                 const from = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
                 const to = localDate(now);
 
-                const resp = await apiRequest('/api/transactions/personal');
+                const resp = await apiRequest('/api/transactions/all');
                 if (!resp) return;
 
                 if (!resp.ok) {
@@ -99,12 +101,14 @@
                         '<td>' + t.date + '</td>' +
                         '<td>' + t.categoryName + '</td>' +
                         '<td>' + (t.description || '') + '</td>' +
+                        '<td>' + (t.familyName || 'Личная') + '</td>' +
+                        '<td>' + (t.userEmail || '—') + '</td>' +
                         '<td class="' + cls + '">' + sign + formatMoney(t.amount) + '</td>' +
                         '</tr>';
                 });
 
                 if (transactions.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4">Нет операций за текущий месяц</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6">Нет операций за текущий месяц</td></tr>';
                 }
             } catch (err) {
                 console.error('Ошибка dashboard:', err);
