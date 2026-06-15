@@ -1,0 +1,20 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: report-service
+
+jwt:
+  secret: REDACTED_JWT_SECRET
+  expiration-ms: 86400000
+
+services:
+  finance:
+    url: http://localhost:8082
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
