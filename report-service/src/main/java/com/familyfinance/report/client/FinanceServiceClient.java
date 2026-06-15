@@ -70,8 +70,10 @@ public class FinanceServiceClient {
         try {
             UriComponentsBuilder builder = UriComponentsBuilder
                     .fromPath("/api/internal/transactions/all")
-                    .queryParam("userId", userId)
-                    .queryParam("familyIds", familyIds);
+                    .queryParam("userId", userId);
+            if (familyIds != null && !familyIds.isEmpty()) {
+                builder.queryParam("familyIds", familyIds);
+            }
             if (from != null) builder.queryParam("from", from);
             if (to != null) builder.queryParam("to", to);
 

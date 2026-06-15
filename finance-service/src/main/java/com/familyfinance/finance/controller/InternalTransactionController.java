@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 
 @RestController
@@ -46,9 +47,10 @@ public class InternalTransactionController {
     @GetMapping("/all")
     public ResponseEntity<List<TransactionResponse>> getAllAccessible(
             @RequestParam Long userId,
-            @RequestParam List<Long> familyIds,
+            @RequestParam(required = false) List<Long> familyIds,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ResponseEntity.ok(transactionService.getAllAccessibleTransactions(userId, familyIds, from, to));
+        List<Long> safeIds = familyIds != null ? familyIds : Collections.emptyList();
+        return ResponseEntity.ok(transactionService.getAllAccessibleTransactions(userId, safeIds, from, to));
     }
 }
