@@ -60,6 +60,13 @@ public class ReportProxyController {
         return forwardCsv("/api/reports/family/export", body, request);
     }
 
+    @PostMapping("/full/export")
+    @Operation(summary = "Экспорт полного отчёта в CSV")
+    public ResponseEntity<byte[]> fullExport(@RequestBody Map<String, Object> body,
+                                             HttpServletRequest request) {
+        return forwardCsv("/api/reports/full/export", body, request);
+    }
+
     @SuppressWarnings("unchecked")
     private ResponseEntity<Map<String, Object>> forwardJson(String path, Map<String, Object> body,
                                                             HttpServletRequest request) {

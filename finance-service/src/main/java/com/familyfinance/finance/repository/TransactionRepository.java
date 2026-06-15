@@ -41,11 +41,30 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("SELECT t FROM Transaction t WHERE " +
            "((t.userId = :userId AND t.family IS NULL) " +
            " OR t.family.id IN :familyIds) " +
-           "AND (:dateFrom IS NULL OR t.date >= :dateFrom) " +
-           "AND (:dateTo IS NULL OR t.date <= :dateTo) " +
+           "AND t.date >= :dateFrom " +
+           "AND t.date <= :dateTo " +
            "ORDER BY t.date DESC")
     List<Transaction> findAllAccessible(@Param("userId") Long userId,
                                         @Param("familyIds") List<Long> familyIds,
                                         @Param("dateFrom") LocalDate dateFrom,
                                         @Param("dateTo") LocalDate dateTo);
+
+    @Query("SELECT t FROM Transaction t WHERE t.userId = :userId " +
+           "AND t.family IS NULL " +
+           "AND t.date >= :dateFrom " +
+           "AND t.date <= :dateTo " +
+           "ORDER BY t.date DESC")
+    List<Transaction> findPersonalByDate(@Param("userId") Long userId,
+                                         @Param("dateFrom") LocalDate dateFrom,
+                                         @Param("dateTo") LocalDate dateTo);
+
+    @Query("SELECT t FROM Transaction t WHERE t.family.id = :familyId " +
+           "AND t.date >= :dateFrom " +
+           "AND t.date <= :dateTo " +
+           "AND (:userId IS NULL OR t.userId = :userId) " +
+           "ORDER BY t.date DESC")
+    List<Transaction> findByFamilyByDate(@Param("familyId") Long familyId,
+                                          @Param("dateFrom") LocalDate dateFrom,
+                                          @Param("dateTo") LocalDate dateTo,
+                                          @Param("userId") Long userId);
 }

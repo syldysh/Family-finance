@@ -225,13 +225,12 @@
         async function exportCsv() {
             if (!validate()) return;
             const type = document.getElementById('report-type').value;
-            if (type === 'full') {
-                document.getElementById('report-error').textContent =
-                    'Экспорт CSV доступен для личного отчёта и отчёта по группе';
-                return;
-            }
             try {
-                const path = type === 'family' ? '/api/reports/family/export' : '/api/reports/personal/export';
+                let path;
+                if (type === 'family') path = '/api/reports/family/export';
+                else if (type === 'full') path = '/api/reports/full/export';
+                else path = '/api/reports/personal/export';
+
                 const resp = await apiRequest(path, {
                     method: 'POST',
                     body: JSON.stringify(getReportBody())
