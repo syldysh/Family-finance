@@ -99,11 +99,7 @@ public class TransactionService {
     @Transactional(readOnly = true)
     public List<TransactionResponse> getAllAccessibleTransactions(Long userId, List<Long> familyIds,
                                                                    LocalDate from, LocalDate to) {
-        if (familyIds == null || familyIds.isEmpty()) {
-            return transactionRepository.findPersonalByDate(userId, orMin(from), orMax(to))
-                    .stream().map(this::toResponse).toList();
-        }
-        return transactionRepository.findAllAccessible(userId, familyIds, orMin(from), orMax(to))
+        return transactionRepository.findAllAccessibleSafe(userId, familyIds, orMin(from), orMax(to))
                 .stream().map(this::toResponse).toList();
     }
 

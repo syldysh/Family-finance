@@ -49,6 +49,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
                                         @Param("dateFrom") LocalDate dateFrom,
                                         @Param("dateTo") LocalDate dateTo);
 
+    default List<Transaction> findAllAccessibleSafe(Long userId, List<Long> familyIds,
+                                                    LocalDate dateFrom, LocalDate dateTo) {
+        if (familyIds == null || familyIds.isEmpty()) {
+            return findPersonalByDate(userId, dateFrom, dateTo);
+        }
+        return findAllAccessible(userId, familyIds, dateFrom, dateTo);
+    }
+
     @Query("SELECT t FROM Transaction t WHERE t.userId = :userId " +
            "AND t.family IS NULL " +
            "AND t.date >= :dateFrom " +
