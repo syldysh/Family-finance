@@ -1,0 +1,7 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres-finance:5432/finance_db
+
+services:
+  auth:
+    url: http://auth-service:8081
