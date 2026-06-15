@@ -9,6 +9,9 @@ jwt:
   secret: REDACTED_JWT_SECRET
   expiration-ms: 86400000
 
+internal:
+  token: ${INTERNAL_TOKEN:REDACTED_INTERNAL_TOKEN}
+
 services:
   finance:
     url: http://localhost:8082
