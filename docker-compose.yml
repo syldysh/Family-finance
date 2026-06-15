@@ -40,6 +40,7 @@ services:
       - "8082:8082"
     environment:
       SPRING_PROFILES_ACTIVE: docker
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-REDACTED_INTERNAL_TOKEN}
     depends_on:
       - postgres-finance
       - auth-service
@@ -52,6 +53,7 @@ services:
       - "8083:8083"
     environment:
       SPRING_PROFILES_ACTIVE: docker
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-REDACTED_INTERNAL_TOKEN}
     depends_on:
       - finance-service
 

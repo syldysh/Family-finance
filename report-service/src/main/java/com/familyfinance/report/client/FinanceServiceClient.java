@@ -15,12 +15,17 @@ import java.util.Map;
 @Component
 public class FinanceServiceClient {
 
-    private final RestClient restClient;
+    private static final String INTERNAL_TOKEN_HEADER = "X-Internal-Token";
 
-    public FinanceServiceClient(@Value("${services.finance.url}") String financeUrl) {
+    private final RestClient restClient;
+    private final String internalToken;
+
+    public FinanceServiceClient(@Value("${services.finance.url}") String financeUrl,
+                                @Value("${internal.token}") String internalToken) {
         this.restClient = RestClient.builder()
                 .baseUrl(financeUrl)
                 .build();
+        this.internalToken = internalToken;
     }
 
     public List<Map<String, Object>> getPersonalTransactions(Long userId, LocalDate from, LocalDate to) {
@@ -33,6 +38,7 @@ public class FinanceServiceClient {
 
             return restClient.get()
                     .uri(builder.toUriString())
+                    .header(INTERNAL_TOKEN_HEADER, internalToken)
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {});
         } catch (RestClientException e) {
@@ -51,6 +57,7 @@ public class FinanceServiceClient {
 
             return restClient.get()
                     .uri(builder.buildAndExpand(familyId).toUriString())
+                    .header(INTERNAL_TOKEN_HEADER, internalToken)
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {});
         } catch (RestClientException e) {
@@ -70,6 +77,7 @@ public class FinanceServiceClient {
 
             return restClient.get()
                     .uri(builder.toUriString())
+                    .header(INTERNAL_TOKEN_HEADER, internalToken)
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {});
         } catch (RestClientException e) {

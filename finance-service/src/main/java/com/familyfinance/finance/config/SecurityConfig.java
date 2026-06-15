@@ -2,6 +2,7 @@ package com.familyfinance.finance.config;
 
 import com.familyfinance.common.security.JwtAuthenticationFilter;
 import com.familyfinance.common.security.JwtUtils;
+import com.familyfinance.finance.security.InternalTokenFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -16,9 +17,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtUtils jwtUtils;
+    private final InternalTokenFilter internalTokenFilter;
 
-    public SecurityConfig(JwtUtils jwtUtils) {
+    public SecurityConfig(JwtUtils jwtUtils, InternalTokenFilter internalTokenFilter) {
         this.jwtUtils = jwtUtils;
+        this.internalTokenFilter = internalTokenFilter;
     }
 
     @Bean
@@ -36,6 +39,7 @@ public class SecurityConfig {
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(internalTokenFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new JwtAuthenticationFilter(jwtUtils),
                         UsernamePasswordAuthenticationFilter.class);
 
