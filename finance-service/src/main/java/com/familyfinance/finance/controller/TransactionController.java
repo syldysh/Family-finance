@@ -63,6 +63,15 @@ public class TransactionController {
                 familyId, principal.getUserId(), from, to, type, categoryId, userId));
     }
 
+    @GetMapping("/all")
+    @Operation(summary = "Получить все доступные операции (личные и из всех групп пользователя)")
+    public ResponseEntity<List<TransactionResponse>> getAllAccessible(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok(transactionService.getAllForUser(principal.getUserId(), from, to));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Получить операцию по ID")
     public ResponseEntity<TransactionResponse> getTransaction(@PathVariable Long id,
