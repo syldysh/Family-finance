@@ -29,6 +29,8 @@ jwt:
 services:
   auth:
     url: http://localhost:8081
+  report:
+    url: http://localhost:8083
 
 springdoc:
   api-docs:

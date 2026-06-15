@@ -25,12 +25,13 @@
                 <label>С <input type="date" id="report-from"></label>
                 <label>По <input type="date" id="report-to"></label>
                 <label>Тип
-                    <select id="report-type">
-                        <option value="personal">Личный</option>
+                    <select id="report-type" onchange="onTypeChange()">
+                        <option value="full">Все мои операции</option>
+                        <option value="personal">Только личные</option>
                         <option value="family">По группе</option>
                     </select>
                 </label>
-                <label>Группа
+                <label id="family-label" style="display:none">Группа
                     <select id="report-family">
                         <option value="">—</option>
                     </select>
@@ -38,6 +39,7 @@
                 <button onclick="buildReport()">Построить</button>
                 <button onclick="exportCsv()">Скачать CSV</button>
             </div>
+            <p id="report-error" class="error-msg"></p>
         </div>
 
         <div id="report-result" class="hidden">
@@ -76,7 +78,7 @@
                 </table>
             </div>
 
-            <div class="card" id="by-user-section">
+            <div class="card hidden" id="by-user-section">
                 <h3>По участникам</h3>
                 <table>
                     <thead><tr><th>ID пользователя</th><th>Доходы</th><th>Расходы</th><th>Баланс</th></tr></thead>
@@ -95,59 +97,89 @@
             new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
         document.getElementById('report-to').value = now.toISOString().split('T')[0];
 
+        let userFamilyIds = [];
+
         async function loadFamilies() {
             const resp = await apiRequest('/api/families');
             if (!resp) return;
             const families = await resp.json();
+            userFamilyIds = families.map(f => f.id);
             const sel = document.getElementById('report-family');
             families.forEach(f => {
                 sel.innerHTML += '<option value="' + f.id + '">' + f.name + '</option>';
             });
         }
 
-        function getReportBody() {
-            return {
-                dateFrom: document.getElementById('report-from').value,
-                dateTo: document.getElementById('report-to').value,
-                familyId: document.getElementById('report-family').value
-                    ? parseInt(document.getElementById('report-family').value)
-                    : null
-            };
+        function onTypeChange() {
+            const type = document.getElementById('report-type').value;
+            document.getElementById('family-label').style.display = type === 'family' ? '' : 'none';
+            document.getElementById('report-error').textContent = '';
         }
 
-        function getReportUrl() {
+        function getReportBody() {
             const type = document.getElementById('report-type').value;
-            return type === 'family' ? '/api/reports/family' : '/api/reports/personal';
+            const body = {
+                dateFrom: document.getElementById('report-from').value,
+                dateTo: document.getElementById('report-to').value
+            };
+            if (type === 'family') {
+                const familyId = document.getElementById('report-family').value;
+                body.familyId = familyId ? parseInt(familyId) : null;
+            } else if (type === 'full') {
+                body.familyIds = userFamilyIds;
+            }
+            return body;
+        }
+
+        function getReportPath() {
+            const type = document.getElementById('report-type').value;
+            if (type === 'family') return '/api/reports/family';
+            if (type === 'full') return '/api/reports/full';
+            return '/api/reports/personal';
+        }
+
+        function validate() {
+            const type = document.getElementById('report-type').value;
+            const errEl = document.getElementById('report-error');
+            const from = document.getElementById('report-from').value;
+            const to = document.getElementById('report-to').value;
+
+            if (!from || !to) {
+                errEl.textContent = 'Укажите период';
+                return false;
+            }
+            if (from > to) {
+                errEl.textContent = 'Дата "С" не может быть позже даты "По"';
+                return false;
+            }
+            if (type === 'family' && !document.getElementById('report-family').value) {
+                errEl.textContent = 'Выберите группу для отчёта по группе';
+                return false;
+            }
+            errEl.textContent = '';
+            return true;
         }
 
         async function buildReport() {
+            if (!validate()) return;
             try {
-                const reportUrl = getReportUrl().replace('/api/reports', '');
-                const body = getReportBody();
-                console.log('Запрос отчета:', 'http://localhost:8083/api/reports' + reportUrl, body);
-                const resp = await fetch('http://localhost:8083/api/reports' + reportUrl, {
+                const resp = await apiRequest(getReportPath(), {
                     method: 'POST',
-                    headers: authHeaders(),
-                    body: JSON.stringify(body)
+                    body: JSON.stringify(getReportBody())
                 });
+                if (!resp) return;
 
                 if (!resp.ok) {
                     const text = await resp.text();
-                    console.error('Ошибка отчета:', resp.status, text);
-                    try {
-                        const err = JSON.parse(text);
-                        alert(err.message || 'Ошибка построения отчета');
-                    } catch (e) {
-                        alert('Ошибка построения отчета: ' + resp.status);
-                    }
+                    let msg = 'Ошибка построения отчёта';
+                    try { msg = JSON.parse(text).message || msg; } catch (e) {}
+                    document.getElementById('report-error').textContent = msg;
                     return;
                 }
 
-                const report = await resp.json();
-                showReport(report);
+                showReport(await resp.json());
             } catch (err) {
-                console.error('Ошибка запроса:', err);
-                alert('Не удалось связаться с сервисом отчетов: ' + err.message);
+                document.getElementById('report-error').textContent = 'Ошибка: ' + err.message;
             }
         }
 
@@ -161,10 +193,11 @@
             fillCategoryTable('income-categories', report.incomeByCategory);
             fillCategoryTable('expense-categories', report.expenseByCategory);
 
+            const byUserSection = document.getElementById('by-user-section');
             const byUserTable = document.getElementById('by-user-table');
             byUserTable.innerHTML = '';
             if (report.byUser && report.byUser.length > 0) {
-                document.getElementById('by-user-section').classList.remove('hidden');
+                byUserSection.classList.remove('hidden');
                 report.byUser.forEach(u => {
                     byUserTable.innerHTML += '<tr>' +
                         '<td>' + u.userId + '</td>' +
@@ -172,6 +205,8 @@
                         '<td class="expense">' + formatMoney(u.expense) + '</td>' +
                         '<td>' + formatMoney(u.balance) + '</td></tr>';
                 });
+            } else {
+                byUserSection.classList.add('hidden');
             }
         }
 
@@ -188,19 +223,23 @@
         }
 
         async function exportCsv() {
+            if (!validate()) return;
+            const type = document.getElementById('report-type').value;
+            if (type === 'full') {
+                document.getElementById('report-error').textContent =
+                    'Экспорт CSV доступен для личного отчёта и отчёта по группе';
+                return;
+            }
             try {
-                const reportUrl = getReportUrl().replace('/api/reports', '');
-                const body = getReportBody();
-                const resp = await fetch('http://localhost:8083/api/reports' + reportUrl + '/export', {
+                const path = type === 'family' ? '/api/reports/family/export' : '/api/reports/personal/export';
+                const resp = await apiRequest(path, {
                     method: 'POST',
-                    headers: authHeaders(),
-                    body: JSON.stringify(body)
+                    body: JSON.stringify(getReportBody())
                 });
+                if (!resp) return;
 
                 if (!resp.ok) {
-                    const text = await resp.text();
-                    console.error('Ошибка экспорта:', resp.status, text);
-                    alert('Ошибка экспорта: ' + resp.status);
+                    document.getElementById('report-error').textContent = 'Ошибка экспорта: ' + resp.status;
                     return;
                 }
 
@@ -212,8 +251,7 @@
                 a.click();
                 window.URL.revokeObjectURL(url);
             } catch (err) {
-                console.error('Ошибка запроса экспорта:', err);
-                alert('Не удалось связаться с сервисом отчетов: ' + err.message);
+                document.getElementById('report-error').textContent = 'Ошибка экспорта: ' + err.message;
             }
         }
 
