@@ -10,6 +10,8 @@ import com.familyfinance.finance.entity.Transaction;
 import com.familyfinance.finance.repository.FamilyMemberRepository;
 import com.familyfinance.finance.repository.FamilyRepository;
 import com.familyfinance.finance.repository.TransactionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +20,8 @@ import java.util.List;
 
 @Service
 public class TransactionService {
+
+    private static final Logger log = LoggerFactory.getLogger(TransactionService.class);
 
     private static final LocalDate DATE_MIN = LocalDate.of(1900, 1, 1);
     private static final LocalDate DATE_MAX = LocalDate.of(2999, 12, 31);
@@ -45,6 +49,9 @@ public class TransactionService {
 
     @Transactional
     public TransactionResponse createTransaction(CreateTransactionRequest request, Long userId) {
+        log.info("Создание транзакции: userId={}, type={}, amount={}, familyId={}",
+                userId, request.getType(), request.getAmount(), request.getFamilyId());
+
         Category category = categoryService.findById(request.getCategoryId());
 
         Family family = null;
@@ -63,6 +70,8 @@ public class TransactionService {
         transaction.setCategory(category);
         transaction.setFamily(family);
         transactionRepository.save(transaction);
+        log.info("Транзакция создана: id={}, userId={}, familyId={}",
+                transaction.getId(), userId, family != null ? family.getId() : null);
 
         if (family != null) {
             notificationService.notifyFamilyUpdate(family.getId());

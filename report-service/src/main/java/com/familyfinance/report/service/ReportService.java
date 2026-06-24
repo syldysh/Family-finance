@@ -3,6 +3,8 @@ package com.familyfinance.report.service;
 import com.familyfinance.report.client.FinanceServiceClient;
 import com.familyfinance.report.dto.ReportRequest;
 import com.familyfinance.report.dto.ReportResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -12,6 +14,8 @@ import java.util.stream.Collectors;
 @Service
 public class ReportService {
 
+    private static final Logger log = LoggerFactory.getLogger(ReportService.class);
+
     private final FinanceServiceClient financeClient;
 
     public ReportService(FinanceServiceClient financeClient) {
@@ -19,25 +23,40 @@ public class ReportService {
     }
 
     public ReportResponse buildPersonalReport(Long userId, ReportRequest request) {
+        log.info("Построение личного отчёта: userId={}, period={}..{}",
+                userId, request.getDateFrom(), request.getDateTo());
         validatePeriod(request);
         List<Map<String, Object>> transactions = financeClient.getPersonalTransactions(
                 userId, request.getDateFrom(), request.getDateTo());
-        return buildReport(transactions, request);
+        ReportResponse response = buildReport(transactions, request);
+        log.info("Личный отчёт готов: userId={}, transactions={}, balance={}",
+                userId, response.getTransactionCount(), response.getBalance());
+        return response;
     }
 
     public ReportResponse buildFamilyReport(Long userId, ReportRequest request) {
+        log.info("Построение семейного отчёта: userId={}, familyId={}, period={}..{}",
+                userId, request.getFamilyId(), request.getDateFrom(), request.getDateTo());
         validatePeriod(request);
         List<Map<String, Object>> transactions = financeClient.getFamilyTransactions(
                 request.getFamilyId(), userId, request.getDateFrom(), request.getDateTo());
-        return buildReport(transactions, request);
+        ReportResponse response = buildReport(transactions, request);
+        log.info("Семейный отчёт готов: familyId={}, transactions={}, balance={}",
+                request.getFamilyId(), response.getTransactionCount(), response.getBalance());
+        return response;
     }
 
     public ReportResponse buildFullReport(Long userId, ReportRequest request) {
+        log.info("Построение полного отчёта: userId={}, familyIds={}, period={}..{}",
+                userId, request.getFamilyIds(), request.getDateFrom(), request.getDateTo());
         validatePeriod(request);
         List<Long> familyIds = request.getFamilyIds() != null ? request.getFamilyIds() : List.of();
         List<Map<String, Object>> transactions = financeClient.getAllAccessible(
                 userId, familyIds, request.getDateFrom(), request.getDateTo());
-        return buildReport(transactions, request);
+        ReportResponse response = buildReport(transactions, request);
+        log.info("Полный отчёт готов: userId={}, transactions={}, balance={}",
+                userId, response.getTransactionCount(), response.getBalance());
+        return response;
     }
 
     private ReportResponse buildReport(List<Map<String, Object>> transactions, ReportRequest request) {
