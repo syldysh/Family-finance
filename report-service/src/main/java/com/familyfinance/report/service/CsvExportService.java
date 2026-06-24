@@ -1,6 +1,8 @@
 package com.familyfinance.report.service;
 
 import com.familyfinance.report.dto.ReportResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -13,7 +15,11 @@ import java.util.Map;
 @Service
 public class CsvExportService {
 
+    private static final Logger log = LoggerFactory.getLogger(CsvExportService.class);
+
     public byte[] exportReport(ReportResponse report) {
+        log.info("Экспорт отчёта в CSV: period={}..{}, transactions={}",
+                report.getDateFrom(), report.getDateTo(), report.getTransactionCount());
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         PrintWriter writer = new PrintWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8));
 
@@ -49,6 +55,8 @@ public class CsvExportService {
         }
 
         writer.flush();
-        return out.toByteArray();
+        byte[] result = out.toByteArray();
+        log.info("CSV отчёт сформирован: {} байт", result.length);
+        return result;
     }
 }

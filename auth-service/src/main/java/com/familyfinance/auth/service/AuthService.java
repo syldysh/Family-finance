@@ -7,6 +7,8 @@ import com.familyfinance.auth.repository.UserRepository;
 import com.familyfinance.common.exception.ConflictException;
 import com.familyfinance.common.exception.NotFoundException;
 import com.familyfinance.common.security.JwtUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -16,6 +18,8 @@ import java.util.List;
 
 @Service
 public class AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -31,7 +35,10 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
+        log.info("Регистрация нового пользователя: email={}", request.getEmail());
+
         if (userRepository.existsByEmail(request.getEmail())) {
+            log.warn("Попытка регистрации с занятым email: {}", request.getEmail());
             throw new ConflictException("Пользователь с email " + request.getEmail() + " уже существует");
         }
 
@@ -43,6 +50,7 @@ public class AuthService {
         user.setRole(Role.USER);
 
         userRepository.save(user);
+        log.info("Пользователь зарегистрирован: id={}, email={}", user.getId(), user.getEmail());
 
         String token = jwtUtils.generateToken(user.getId(), user.getEmail(),
                 List.of(user.getRole().name()));
@@ -51,15 +59,22 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
+        log.info("Попытка входа: email={}", request.getEmail());
+
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new BadCredentialsException("Неверный email или пароль"));
+                .orElseThrow(() -> {
+                    log.warn("Вход с несуществующим email: {}", request.getEmail());
+                    return new BadCredentialsException("Неверный email или пароль");
+                });
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            log.warn("Вход с неверным паролем: email={}", request.getEmail());
             throw new BadCredentialsException("Неверный email или пароль");
         }
 
         String token = jwtUtils.generateToken(user.getId(), user.getEmail(),
                 List.of(user.getRole().name()));
+        log.info("Успешный вход: id={}, email={}", user.getId(), user.getEmail());
 
         return new AuthResponse(token, user.getEmail(), user.getRole().name());
     }
