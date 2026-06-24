@@ -1,0 +1,10 @@
+jwt:
+  secret: REDACTED_JWT_SECRET
+  expiration-ms: 86400000
+
+internal:
+  token: test-internal-token
+
+services:
+  finance:
+    url: http://localhost:9999
