@@ -17,6 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 public class TransactionService {
@@ -83,12 +86,13 @@ public class TransactionService {
     @Transactional(readOnly = true)
     public List<TransactionResponse> getPersonalTransactions(Long userId, LocalDate from, LocalDate to,
                                                               OperationType type, Long categoryId) {
+        List<Transaction> transactions;
         if (type == null && categoryId == null) {
-            return transactionRepository.findPersonalByDate(userId, orMin(from), orMax(to))
-                    .stream().map(this::toResponse).toList();
+            transactions = transactionRepository.findPersonalByDate(userId, orMin(from), orMax(to));
+        } else {
+            transactions = transactionRepository.findPersonal(userId, from, to, type, categoryId);
         }
-        return transactionRepository.findPersonal(userId, from, to, type, categoryId)
-                .stream().map(this::toResponse).toList();
+        return toResponseList(transactions);
     }
 
     @Transactional(readOnly = true)
@@ -97,19 +101,21 @@ public class TransactionService {
                                                             OperationType type, Long categoryId,
                                                             Long filterUserId) {
         accessService.checkFamilyMember(familyId, userId);
+        List<Transaction> transactions;
         if (type == null && categoryId == null) {
-            return transactionRepository.findByFamilyByDate(familyId, orMin(from), orMax(to), filterUserId)
-                    .stream().map(this::toResponse).toList();
+            transactions = transactionRepository.findByFamilyByDate(familyId, orMin(from), orMax(to), filterUserId);
+        } else {
+            transactions = transactionRepository.findByFamily(familyId, from, to, type, categoryId, filterUserId);
         }
-        return transactionRepository.findByFamily(familyId, from, to, type, categoryId, filterUserId)
-                .stream().map(this::toResponse).toList();
+        return toResponseList(transactions);
     }
 
     @Transactional(readOnly = true)
     public List<TransactionResponse> getAllAccessibleTransactions(Long userId, List<Long> familyIds,
                                                                    LocalDate from, LocalDate to) {
-        return transactionRepository.findAllAccessibleSafe(userId, familyIds, orMin(from), orMax(to))
-                .stream().map(this::toResponse).toList();
+        List<Transaction> transactions = transactionRepository
+                .findAllAccessibleSafe(userId, familyIds, orMin(from), orMax(to));
+        return toResponseList(transactions);
     }
 
     private LocalDate orMin(LocalDate d) {
@@ -141,6 +147,29 @@ public class TransactionService {
         return toResponse(transaction);
     }
 
+    private List<TransactionResponse> toResponseList(List<Transaction> transactions) {
+        List<Long> familyIds = transactions.stream()
+                .map(t -> t.getFamily() != null ? t.getFamily().getId() : null)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        Map<String, String> emailLookup = Map.of();
+        if (!familyIds.isEmpty()) {
+            emailLookup = familyMemberRepository.findAllByFamilyIds(familyIds).stream()
+                    .collect(Collectors.toMap(
+                            m -> m.getFamily().getId() + ":" + m.getUserId(),
+                            m -> m.getUserEmail(),
+                            (a, b) -> a
+                    ));
+        }
+
+        Map<String, String> lookup = emailLookup;
+        return transactions.stream()
+                .map(t -> toResponse(t, lookup))
+                .toList();
+    }
+
     private TransactionResponse toResponse(Transaction t) {
         String userEmail = familyMemberRepository
                 .findByFamilyIdAndUserId(
@@ -148,7 +177,18 @@ public class TransactionService {
                         t.getUserId())
                 .map(m -> m.getUserEmail())
                 .orElse(null);
+        return buildResponse(t, userEmail);
+    }
 
+    private TransactionResponse toResponse(Transaction t, Map<String, String> emailLookup) {
+        String userEmail = null;
+        if (t.getFamily() != null) {
+            userEmail = emailLookup.get(t.getFamily().getId() + ":" + t.getUserId());
+        }
+        return buildResponse(t, userEmail);
+    }
+
+    private TransactionResponse buildResponse(Transaction t, String userEmail) {
         return new TransactionResponse(
                 t.getId(),
                 t.getAmount(),
