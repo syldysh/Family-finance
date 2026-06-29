@@ -23,8 +23,10 @@ public class RegisterRequest {
     private String password;
 
     @NotBlank(message = "Имя обязательно")
+    @Size(max = 50, message = "Имя не может быть длиннее 50 символов")
     private String firstName;
 
     @NotBlank(message = "Фамилия обязательна")
+    @Size(max = 50, message = "Фамилия не может быть длиннее 50 символов")
     private String lastName;
 }

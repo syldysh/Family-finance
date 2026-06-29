@@ -1,5 +1,6 @@
 package com.familyfinance.report.dto;
 
+import com.familyfinance.report.validation.ValidPeriod;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -13,6 +14,7 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@ValidPeriod
 public class ReportRequest {
 
     @NotNull(message = "Дата начала периода обязательна")
