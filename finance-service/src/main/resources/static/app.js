@@ -22,7 +22,7 @@ function authHeaders() {
 async function apiRequest(url, options = {}) {
     options.headers = { ...authHeaders(), ...options.headers };
     const response = await fetch(API_BASE + url, options);
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
         clearToken();
         window.location.href = '/login';
         return null;

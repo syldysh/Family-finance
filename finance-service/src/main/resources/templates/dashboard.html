@@ -18,6 +18,7 @@
 
     <div class="container">
         <h1>Главная</h1>
+        <p id="dashboard-error" class="error-msg" style="color:red;display:none;"></p>
 
         <div class="stats">
             <div class="stat-card">
@@ -75,7 +76,9 @@
                 if (!resp) return;
 
                 if (!resp.ok) {
-                    console.error('Ошибка загрузки операций:', resp.status, await resp.text());
+                    const errEl = document.getElementById('dashboard-error');
+                    errEl.textContent = 'Ошибка загрузки данных';
+                    errEl.style.display = 'block';
                     return;
                 }
 
@@ -111,7 +114,9 @@
                     tbody.innerHTML = '<tr><td colspan="6">Нет операций за текущий месяц</td></tr>';
                 }
             } catch (err) {
-                console.error('Ошибка dashboard:', err);
+                const errEl = document.getElementById('dashboard-error');
+                errEl.textContent = 'Ошибка загрузки данных: ' + err.message;
+                errEl.style.display = 'block';
             }
         }
 

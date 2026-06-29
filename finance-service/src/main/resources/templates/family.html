@@ -44,6 +44,9 @@
             if (resp && resp.ok) {
                 document.getElementById('family-name').value = '';
                 loadFamilies();
+            } else if (resp) {
+                const err = await resp.json();
+                alert(err.message || 'Ошибка создания группы');
             }
         }
 
@@ -70,7 +73,12 @@
             const resp = await apiRequest('/api/families/' + familyId + '/members/' + userId, {
                 method: 'DELETE'
             });
-            if (resp && resp.ok) loadFamilies();
+            if (resp && resp.ok) {
+                loadFamilies();
+            } else if (resp) {
+                const err = await resp.json();
+                alert(err.message || 'Ошибка удаления участника');
+            }
         }
 
         async function loadFamilies() {

@@ -2,6 +2,7 @@ package com.familyfinance.auth.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -18,5 +19,6 @@ public class LoginRequest {
     private String email;
 
     @NotBlank(message = "Пароль обязателен")
+    @Size(min = 6, max = 100, message = "Пароль должен быть от 6 до 100 символов")
     private String password;
 }
