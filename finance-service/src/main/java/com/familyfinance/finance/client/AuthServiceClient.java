@@ -2,6 +2,7 @@ package com.familyfinance.finance.client;
 
 import com.familyfinance.common.exception.NotFoundException;
 import com.familyfinance.common.exception.ServiceUnavailableException;
+import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -20,6 +21,7 @@ public class AuthServiceClient {
                 .build();
     }
 
+    @Retry(name = "authService")
     @SuppressWarnings("unchecked")
     public Map<String, Object> getUserByEmail(String email, String token) {
         try {

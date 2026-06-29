@@ -35,6 +35,15 @@ services:
   report:
     url: http://localhost:8083
 
+resilience4j:
+  retry:
+    instances:
+      authService:
+        max-attempts: 3
+        wait-duration: 500ms
+        retry-exceptions:
+          - com.familyfinance.common.exception.ServiceUnavailableException
+
 springdoc:
   api-docs:
     path: /v3/api-docs
