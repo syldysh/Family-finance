@@ -1,281 +1,169 @@
-**Проектное задание: сервис учета личных и семейных финансов**
+<h1 align="center">Family Finance</h1>
+
+<p align="center">
+  A web application for managing personal and shared finances
+</p>
 
-Необходимо разработать backend-систему для учета личных и семейных финансов. Система должна позволять пользователям фиксировать доходы и расходы, объединяться в семьи или финансовые группы, классифицировать операции, анализировать финансовое поведение и строить отчеты за разные периоды.
+<p align="center">
+  <img src="https://img.shields.io/badge/Java-17-ED8B00?style=flat-square" alt="Java 17">
+  <img src="https://img.shields.io/badge/Spring_Boot-3.2.5-6DB33F?style=flat-square" alt="Spring Boot 3.2.5">
+  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square" alt="PostgreSQL 16">
+  <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square" alt="Docker Compose">
+</p>
 
-В качестве продуктовых ориентиров можно использовать банковские приложения с аналитикой расходов или другие сервисы учета финансов.
+<p align="center">
+  <strong>English</strong> · <a href="README_RU.md">Русский</a>
+</p>
 
-Проект должен быть реализован как полноценное Spring(Boot)-приложение на базе или с элементами микросервисной архитектуры (должно присутствовать, как минимум, два микросервиса) и должен отражать основные темы курса.
+## About the project
 
----
+I built **Family Finance** to explore how a real backend system can manage personal and shared financial data. A user can record income and expenses, create a family group, invite other registered users, and see how money is distributed between categories and group members.
 
-**Цель проекта**
+My main focus was the backend architecture. I divided the application into three Spring Boot services, added authentication and access rules, set up separate databases, and implemented communication between the services. I also created a simple web interface, so the main scenarios can be tested without an external client.
 
-Цель проекта — создать систему, которая помогает пользователю или семье понимать структуру своих финансов:
+## What the application can do
 
-* откуда приходят деньги;
-* на что они тратятся;
-* как меняются доходы и расходы по месяцам и годам;
-* кто из участников семьи совершает расходы или получает доходы;
-* какие категории занимают наибольшую долю бюджета;
-* как выглядит общий баланс семьи или выбранной группы участников.
+- register users and authenticate them with JWT;
+- store personal and family income and expenses;
+- use built-in categories or create custom ones;
+- create financial groups and manage their members by email;
+- protect private data and allow only a group owner to manage members;
+- filter operations by period, type, category, family, or member;
+- show the current month's balance and recent operations on a dashboard;
+- build personal, family, and combined reports for any date range;
+- calculate income, expenses, balance, and totals by category or member;
+- export reports as CSV files;
+- publish WebSocket notifications when a new family operation is added;
+- explore and test each service through Swagger UI.
 
-Проект должен продемонстрировать не только реализацию бизнес-функций, но и умение проектировать backend-систему с использованием экосистемы Spring, базы данных, авторизации, межсервисного взаимодействия, интеграций, тестирования и лучших инженерных практик.
+## Architecture
 
----
+```mermaid
+flowchart LR
+    UI[Browser / Thymeleaf UI] -->|HTTP + JWT| FIN[finance-service<br/>:8082]
+    FIN -->|User lookup| AUTH[auth-service<br/>:8081]
+    FIN -->|Report request| REPORT[report-service<br/>:8083]
+    REPORT -->|Internal REST API| FIN
+    AUTH --> AUTH_DB[(auth_db)]
+    FIN --> FIN_DB[(finance_db)]
+    COMMON[common module<br/>JWT · security · errors] -.-> AUTH
+    COMMON -.-> FIN
+    COMMON -.-> REPORT
+```
 
-**Основной функционал**
+| Module | Responsibility |
+| --- | --- |
+| `auth-service` | Registration, login, password hashing, JWT creation, and user lookup |
+| `finance-service` | Transactions, categories, family groups, access control, web UI, and WebSocket events |
+| `report-service` | Report calculation, aggregation by category and member, and CSV export |
+| `common` | Shared JWT filter, security classes, error responses, and exceptions |
 
-Система должна поддерживать регистрацию и авторизацию пользователей, а также ролевую модель. Пользователь должен иметь доступ только к своим данным и к данным тех групп, в которых он состоит.
+The services communicate through synchronous REST calls. Short temporary failures are handled with Resilience4j Retry. The internal endpoint used by the report service is protected with an `X-Internal-Token` header.
 
-Пользователи должны иметь возможность создавать семейные или финансовые группы, добавлять участников и вести общий учет финансов. Например, семья из нескольких человек должна иметь возможность построить отчет за указанный период (месяц, год, квартал и т.д.), как по всей семье, так и по каждому участнику отдельно.
+More details about the main technical decisions are available in [`docs/adr`](docs/adr).
 
-Система должна позволять добавлять доходы и расходы. Для каждой операции должны сохраняться основные данные: сумма, дата, тип операции, описание, категория, принадлежность к пользователю и семейной группе.
+## Technology stack
 
-Операции должны классифицироваться по категориям. Например, расходы могут относиться к продуктам, транспорту, здоровью, образованию, развлечениям и другим категориям. Доходы могут относиться к зарплате, подработке, бизнесу, инвестициям, подаркам и другим источникам.
+- Java 17 and Gradle
+- Spring Boot, Spring MVC, Spring Security, and Spring Data JPA
+- PostgreSQL and Flyway migrations
+- JWT and BCrypt password hashing
+- Thymeleaf, JavaScript, and WebSocket/STOMP
+- Resilience4j Retry
+- Docker and Docker Compose
+- JUnit 5, MockMvc, H2, and Testcontainers
+- OpenAPI / Swagger UI
 
-Система должна предоставлять отчеты и аналитику:
+## Quick start with Docker
 
-* за месяц;
-* за квартал;
-* за год;
-* за произвольный период;
-* по одному пользователю;
-* по всей семье;
-* по выбранным участникам группы;
-* по категориям расходов;
-* по источникам доходов.
+### Requirements
 
-Отчеты должны представлять из себя список операций (или их сумму) с наложенным на них фильтром и/или группировкой по заданным критериям. В приложении должна быть возможность просмотра отчетов на UI и выгрузки данных в виде файла-документа.
+- Git
+- Docker with Docker Compose
 
----
+### Run the application
 
-**Архитектурные требования**
+```bash
+git clone https://github.com/syldysh/Family-finance.git
+cd Family-finance
+docker compose up --build
+```
 
-Проект может быть реализован как модульный монолит + небольшое количество сервисов, или как полноценная микросервисная система. Если выбран подход «монолит + сервисы», рекомендуется выделить, как минимум, сервисы:
+Docker Compose starts three application services and two PostgreSQL containers. When all services are ready, open:
 
-* авторизации;
-* отчетов.
+**http://localhost:8082/login**
 
-Где сервис авторизации отвечает за регистрацию, вход пользователя, выдачу и проверку JWT-токенов.
+Create an account, sign in, and add your first operation. To test family features, register a second account and add it to a group by email.
 
-Между сервисами должна быть реализована коммуникация. Она может быть синхронной через REST и/или асинхронной через брокеры сообщений. В каждом случае выбор способа коммуникации необходимо обосновать.
+To stop the application:
 
----
+```bash
+docker compose down
+```
 
-**Требования к использованию Spring**
+Database data is stored in Docker volumes and stays available after a normal restart. To remove the local data as well, use `docker compose down -v`.
 
-Проект должен отражать знание основных частей Spring-экосистемы.
+> The default passwords and internal token are for local development only. They must be changed before using the project in another environment.
 
-**Spring Core**
+## Local development
 
-В проекте должны использоваться основные возможности Spring Core:
+For a local run without Docker, install Java 17 and PostgreSQL. Create two databases on `localhost:5432`:
 
-* dependency injection;
-* конфигурация beans;
-* разделение приложения на компоненты, сервисы, репозитории и контроллеры;
-* использование профилей или конфигурационных свойств там, где это уместно.
+- `auth_db`
+- `finance_db`
 
-**Spring Security**
+The default local username and password are both `postgres`. They can be changed in the service configuration files.
 
-В системе должна быть реализована авторизация и разграничение доступа согласно ролевой модели.
+Start each service in a separate terminal:
 
-Для авторизации необходимо использовать JWT-токены. Пользователь после входа получает токен, который используется для доступа к защищенным endpoint’ам. В качестве сервиса авторизации возможно использовать существующие решения.
+```bash
+./gradlew :auth-service:bootRun
+./gradlew :finance-service:bootRun
+./gradlew :report-service:bootRun
+```
 
-Должны быть ограничены следующие сценарии:
+The services use these ports:
 
-* пользователь не может видеть чужие личные операции;
-* пользователь не может получить доступ к семье, в которой он не состоит;
-* только участник с соответствующими правами может управлять составом семьи;
-* административные действия должны быть защищены ролью или правами.
+| Service | Port |
+| --- | ---: |
+| Authentication API | `8081` |
+| Main API and web interface | `8082` |
+| Reporting API | `8083` |
 
-**Spring MVC или WebFlux**
+## API documentation
 
-Система должна предоставлять API для работы с основными сценариями:
+After startup, Swagger UI is available for every service:
 
-* регистрация и вход;
-* управление семьями или группами;
-* добавление и просмотр операций;
-* работа с категориями;
-* построение отчетов.
+- Auth service: http://localhost:8081/swagger-ui.html
+- Finance service: http://localhost:8082/swagger-ui.html
+- Report service: http://localhost:8083/swagger-ui.html
 
-Можно использовать Spring MVC или Spring WebFlux. Выбор подхода нужно обосновать.
+Protected endpoints require a JWT from the login or registration response. For a direct API request, send it in the `Authorization: Bearer <token>` header.
 
-**Bean Validation**
+## Tests
 
-Входные данные должны валидироваться.
+Run the complete test suite with:
 
-Например (но не ограничиваясь):
+```bash
+./gradlew test
+```
 
-* сумма операции должна быть больше нуля;
-* дата операции должна быть корректной;
-* email должен иметь корректный формат;
-* обязательные поля не должны быть пустыми;
-* период отчета должен быть валидным.
+The project contains unit and integration tests for authentication, access control, family management, transactions, reports, CSV export, REST controllers, and database operations.
 
-**Spring Data**
+## Project structure
 
-Система должна использовать один из вариантов Spring Data:
+```text
+Family-finance/
+├── auth-service/       # Authentication and users
+├── finance-service/    # Core domain, API, and web interface
+├── report-service/     # Reports and CSV export
+├── common/             # Shared security and error handling
+├── docs/adr/           # Architecture decision records
+├── docker-compose.yml  # Full local environment
+├── build.gradle        # Shared Gradle configuration
+└── settings.gradle     # Multi-module project settings
+```
 
-* Spring Data JPA;
-* Spring Data JDBC;
-* Spring Data MongoDB;
-* другой Spring Data-модуль, если он обоснован.
+## What I practised
 
-Необходимо реализовать хранение основных данных: пользователей, семей, участников, операций, категорий, источников доходов и связанных с ними данных. Выбор базы данных нужно обосновать. Возможно использование нескольких видов БД под разные задачи.
-
----
-
-**Отказоустойчивость и надежность**
-
-Использование паттернов отказоустойчивости приветствуется.
-
-В проекте можно применить:
-
-* `Retry`;
-* `Circuit Breaker`;
-* `Cache`;
-* `Service Registry`;
-* `Config Server`;
-* `API Gateway`.
-
-Эти механизмы не являются обязательными для минимальной реализации, но их использование повышает качество проекта. Если студент или учащийся применяет такие паттерны, он должен объяснить, какую проблему они решают.
-
----
-
-**Обработка ошибок**
-
-В проекте должна быть предусмотрена единая обработка ошибок.
-
-API должно возвращать понятные ответы при ошибках и не выдавать через них детали своей реализации:
-
-* пользователь не найден;
-* неверный логин или пароль;
-* нет доступа к данным;
-* операция не найдена;
-* категория не найдена;
-* некорректные входные данные;
-* внешний сервис недоступен;
-* ошибка импорта данных;
-* ошибка межсервисного взаимодействия.
-
-Ошибки не должны приводить к непонятным stack trace в ответах API.
-
----
-
-**Тестирование**
-
-Юнит- и интеграционные тесты приветствуются.
-
-Желательно покрыть тестами:
-
-* бизнес-логику операций;
-* построение отчетов;
-* проверку прав доступа;
-* валидацию входных данных;
-* обработку ошибок;
-* работу с базой данных;
-* REST API;
-* межсервисное взаимодействие.
-
-Для интеграционных тестов можно использовать встроенную БД, Testcontainers или тестовое окружение через Docker Compose.
-
----
-
-**Docker и запуск**
-
-Использование Docker приветствуется.
-
-Желательно подготовить:
-
-* `Dockerfile` для сервисов;
-* `docker-compose.yml`;
-* инструкцию по локальному запуску;
-* описание переменных окружения.
-
-Если проект состоит из нескольких сервисов, через Docker Compose должно быть удобно поднять всю систему целиком.
-
----
-
-**Лучшие практики**
-
-При реализации проекта необходимо соблюдать базовые инженерные практики:
-
-* внедрение зависимостей;
-* разделение ответственности между слоями;
-* понятная структура пакетов;
-* DTO для API-слоя;
-* отсутствие бизнес-логики в контроллерах;
-* валидация;
-* централизованная обработка ошибок;
-* логирование;
-* конфигурация через properties/yaml/env;
-* работа с БД без типовых проблем (N+1 и т.п.);
-* загрузка только необходимой информации;
-* миграции БД;
-* читаемый README;
-* документация API (Swagger/OpenAPI).
-
----
-
-**Минимальный результат**
-
-К концу проекта должна быть готова backend-система, в которой можно:
-
-1. Зарегистрировать и авторизовать пользователя.
-2. Получить JWT или аналог.
-3. Создать семью или группу.
-4. Добавить участников.
-5. Добавлять доходы и расходы.
-6. Классифицировать операции.
-7. Получать отчеты за период.
-8. Получать отчеты по семье и участникам.
-9. Проверить API через документацию.
-10. Запустить проект локально.
-
----
-
-**Дополнительные возможности**
-
-* мультивалютность;
-* курсы валют;
-* кеширование;
-* импорт банковских операций;
-* лимиты;
-* Telegram-бот;
-* уведомления;
-* регулярные операции;
-* авто-категоризация;
-* асинхронные отчеты.
-
----
-
-**Критерии оценки**
-
-Проект оценивается по следующим направлениям:
-
-* полнота пользовательских сценариев;
-* корректность доменной модели;
-* архитектура;
-* качество кода;
-* использование Spring;
-* безопасность;
-* API;
-* валидация;
-* работа с БД;
-* межсервисное взаимодействие;
-* обработка ошибок;
-* тесты;
-* отказоустойчивость;
-* Docker;
-* документация;
-* способность студента или учащегося объяснить технические решения.
-
----
-
-**Итоговая формулировка**
-
-Разработать backend-систему учета личных и семейных финансов на базе Spring. Система должна позволять пользователям вести доходы и расходы, объединяться в семьи или финансовые группы, классифицировать операции и строить отчеты за разные периоды.
-
-Проект должен продемонстрировать владение Spring Core, Spring Security, Spring MVC или WebFlux, Bean Validation, Spring Data и принципами построения надежного backend-приложения. Необходимо использовать JWT, вынести в отдельные сервисы авторизацию и отчеты, реализовать коммуникацию между сервисами через REST и/или очереди.
-
-Особое внимание должно быть уделено разграничению доступа, обработке ошибок, качеству кода и архитектуры, тестированию, документации и возможности запуска проекта в локальном окружении, желательно через Docker.
+This project helped me practise domain modelling, service separation, secure REST APIs, database migrations, access control, inter-service communication, and automated testing. It also showed me where microservices add useful boundaries and where they create extra operational work.
