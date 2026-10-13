@@ -6,8 +6,8 @@ spring:
     name: auth-service
   datasource:
     url: jdbc:postgresql://localhost:5432/auth_db
-    username: postgres
-    password: REDACTED_DATABASE_PASSWORD
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -20,7 +20,7 @@ spring:
     locations: classpath:db/migration
 
 jwt:
-  secret: REDACTED_JWT_SECRET
+  secret: ${JWT_SECRET}
   expiration-ms: 86400000
 
 springdoc:

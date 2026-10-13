@@ -7,7 +7,7 @@ spring:
     locations: classpath:db/migration
 
 jwt:
-  secret: REDACTED_JWT_SECRET
+  secret: test-only-jwt-signing-key-at-least-32-characters
   expiration-ms: 86400000
 
 internal:

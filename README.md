@@ -86,6 +86,8 @@ More details about the main technical decisions are available in [`docs/adr`](do
 ```bash
 git clone https://github.com/syldysh/Family-finance.git
 cd Family-finance
+cp .env.example .env
+# Replace every placeholder in .env with your own local value.
 docker compose up --build
 ```
 
@@ -101,9 +103,9 @@ To stop the application:
 docker compose down
 ```
 
-Database data is stored in Docker volumes and stays available after a normal restart. To remove the local data as well, use `docker compose down -v`.
+Docker Compose reads the database credentials, JWT signing key, and internal service token from `.env`. This file is ignored by Git and must never be committed. You can generate random values for `JWT_SECRET` and `INTERNAL_TOKEN` with `openssl rand -base64 48`.
 
-> The default passwords and internal token are for local development only. They must be changed before using the project in another environment.
+Database data is stored in Docker volumes and stays available after a normal restart. To remove the local data as well, use `docker compose down -v`.
 
 ## Local development
 
@@ -112,7 +114,15 @@ For a local run without Docker, install Java 17 and PostgreSQL. Create two datab
 - `auth_db`
 - `finance_db`
 
-The default local username and password are both `postgres`. They can be changed in the service configuration files.
+Copy `.env.example` to `.env`, replace all placeholders, and export the variables before starting the services:
+
+```bash
+cp .env.example .env
+# Edit .env first.
+set -a
+source .env
+set +a
+```
 
 Start each service in a separate terminal:
 

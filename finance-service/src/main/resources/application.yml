@@ -6,8 +6,8 @@ spring:
     name: finance-service
   datasource:
     url: jdbc:postgresql://localhost:5432/finance_db
-    username: postgres
-    password: REDACTED_DATABASE_PASSWORD
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   mvc:
     format:
       date: iso
@@ -23,11 +23,11 @@ spring:
     locations: classpath:db/migration
 
 jwt:
-  secret: REDACTED_JWT_SECRET
+  secret: ${JWT_SECRET}
   expiration-ms: 86400000
 
 internal:
-  token: ${INTERNAL_TOKEN:REDACTED_INTERNAL_TOKEN}
+  token: ${INTERNAL_TOKEN}
 
 services:
   auth:
